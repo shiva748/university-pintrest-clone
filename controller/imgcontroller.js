@@ -2,9 +2,13 @@ const fs = require("fs");
 const path = require("path");
 const Busboy = require("busboy");
 const uniqid = require("uniqid");
+const { handleError } = require("../snippets/error");
+const { fileupload } = require("../snippets/validation");
+const image = require("../database/Schema/image");
 
-exports.upload = (req, res) => {
+exports.upload = async (req, res) => {
   try {
+    const user = req.user;
     const busboy = Busboy({ headers: req.headers });
     const uploadDir = path.join(__dirname, "../public/");
 
@@ -18,67 +22,79 @@ exports.upload = (req, res) => {
     let savedFileName;
     let uploadRejected = false;
 
+    busboy.on("field", (fieldname, value) => {
+      fields = JSON.parse(value);
+    });
+
     busboy.on("file", (fieldname, file, fileInfo) => {
       fileCount++;
 
       if (fileCount > 1) {
-        console.error("Multiple file upload detected. Rejecting request.");
         uploadRejected = true;
-        if (savedFileName) {
-          fs.unlinkSync(path.join(uploadDir, savedFileName));
-        }
-        return res.status(400).json({ message: "Only one file is allowed." });
+        return handleError("Only one file is allowed.", 400);
       }
 
       const allowedMimeTypes = ["image/jpeg", "image/png"];
       if (!allowedMimeTypes.includes(fileInfo.mimeType)) {
-        console.error("Invalid file type:", fileInfo.mimeType);
         uploadRejected = true;
-        return res
-          .status(400)
-          .json({ message: "Only JPG and PNG files are allowed." });
+        return handleError("Only JPG and PNG files are allowed.", 400);
       }
 
       savedFileName = uniqid("img-") + `.${fileInfo.mimeType.split("/")[1]}`;
       uploadPath = path.join(uploadDir, savedFileName);
       const writeStream = fs.createWriteStream(uploadPath);
+
       file.pipe(writeStream);
 
-      file.on("error", (err) => {
-        console.error("File upload error:", err);
+      writeStream.on("finish", () => {
+        console.log("File successfully saved:", uploadPath);
+      });
+
+      writeStream.on("error", (err) => {
+        console.error("File write error:", err);
         uploadRejected = true;
-        return res.status(500).json({ message: "File upload failed." });
+        return handleError("File upload failed.", 500);
       });
     });
 
-    busboy.on("field", (fieldname, value) => {
-      fields[fieldname] = value;
-    });
-
-    busboy.on("finish", () => {
+    busboy.on("finish", async () => {
       if (uploadRejected || fileCount > 1) {
         if (savedFileName) {
           fs.unlinkSync(path.join(uploadDir, savedFileName));
         }
-        return res.status(400).json({ message: "Only one file is allowed." });
+        return res
+          .status(400)
+          .json({ result: false, message: "Only one file is allowed." });
       }
 
       if (!savedFileName) {
         return res
           .status(400)
-          .json({ message: "No valid image file uploaded." });
+          .json({ result: false, message: "No valid image file uploaded." });
       }
-
-      res.status(200).json({
-        message: "File uploaded successfully!",
-        filePath: uploadPath,
-        fields,
+      let validate = fileupload(fields);
+      if (!validate.result) {
+        fs.unlinkSync(path.join(uploadDir, savedFileName));
+        return res
+          .status(validate.status)
+          .json({ result: false, message: validate.message });
+      }
+      let img = new image({
+        ...fields,
+        imageUrl: savedFileName,
+        user: user._id,
+      });
+      await img.save();
+      return res.status(201).json({
+        result: true,
+        message:
+          "Your file has been successfully uploaded. Please wait while we review and approve your image.",
+        filePath: savedFileName,
       });
     });
-
     busboy.on("error", (error) => {
       console.error("Error during upload:", error);
-      res.status(500).json({ message: "File upload failed." });
+      return handleError("File upload failed.", 500);
     });
 
     req.pipe(busboy);

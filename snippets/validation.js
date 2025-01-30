@@ -69,3 +69,48 @@ exports.register = (data) => {
   this.username(data);
   this.unpassword(data);
 };
+
+// === === === file upload === === === //
+
+exports.fileupload = (data) => {
+  let { title, description, tags } = data;
+
+  if (!title || !validator.isLength(title, { min: 3, max: 40 })) {
+    return {
+      message: "Please enter a valid title for image",
+      status: 400,
+      result: false,
+    };
+  }
+
+  if (!description || !validator.isLength(description, { min: 50, max: 500 })) {
+    return {
+      message: "Please enter a valid description for image",
+      status: 400,
+      result: false,
+    };
+  }
+
+  if (
+    !Array.isArray(tags) ||
+    tags.length < 1 ||
+    tags.length > 25 ||
+    !tags.every(
+      (tag) =>
+        typeof tag === "string" && validator.isLength(tag, { min: 3, max: 25 })
+    )
+  ) {
+    return {
+      message:
+        "Tags must be an array of 1 to 5 strings, each between 3 and 20 characters",
+      status: 400,
+      result: false,
+    };
+  }
+
+  return {
+    message: "Validation successful",
+    status: 200,
+    result: true,
+  };
+};

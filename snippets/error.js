@@ -1,5 +1,4 @@
 exports.handleError = (message, status) => {
-  console.log(message);
   let error = new Error(message);
   error.status = status;
   throw error;

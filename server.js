@@ -20,6 +20,10 @@ app.use(express.json());
 
 app.use(cookieParser());
 
+// === === === serving files === === === //
+
+app.use("/image", express.static("./public"));
+
 // === === === use of routes === === === //
 
 app.use("/", basic);
