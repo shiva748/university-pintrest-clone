@@ -104,3 +104,97 @@ exports.upload = async (req, res) => {
       .json({ result: false, message: error.message });
   }
 };
+
+// === === === search images === === === //
+
+exports.search_image = async (req, res) => {
+  try {
+    let { query } = req.body;
+    if (!query) {
+      return res
+        .status(400)
+        .json({ result: false, message: "Query is required" });
+    }
+
+    let queryWords = query.split(" ").map((word) => new RegExp(word, "i"));
+
+    let images = await image.find({
+      $or: [
+        { title: { $in: queryWords } },
+        { description: { $in: queryWords } },
+        { tags: { $elemMatch: { $in: queryWords } } },
+      ],
+      approved: true,
+    });
+
+    res.status(200).json({ result: true, images });
+  } catch (error) {
+    res
+      .status(error.status || 500)
+      .json({ result: false, message: error.message });
+  }
+};
+
+// === === === like image === === === //
+
+exports.like_image = async (req, res) => {
+  try {
+    let { image_id } = req.body;
+    if (!image_id) {
+      handleError("Invalid request", 400);
+    }
+    let user = req.user;
+    let img = await image.findById(image_id);
+    if (!img) {
+      handleError("Invalid request", 400);
+    } else if (!img.approved) {
+      handleError("Invalid request", 400);
+    }
+    if (img.likes.some((data) => data.user == user._id)) {
+      handleError("Invalid request", 400);
+    } else {
+      img.likes.push({ user: user._id });
+      img.likeCount++;
+      await img.save();
+      return res
+        .status(200)
+        .json({ result: true, message: "Added to liked images" });
+    }
+  } catch (error) {
+    res
+      .status(error.status || 500)
+      .json({ result: false, message: error.message });
+  }
+};
+
+// === === === unlike image === === === //
+
+exports.unlike_image = async (req, res) => {
+  try {
+    let { image_id } = req.body;
+    if (!image_id) {
+      handleError("Invalid request", 400);
+    }
+    let user = req.user;
+    let img = await image.findById(image_id);
+    if (!img) {
+      handleError("Invalid request", 400);
+    } else if (!img.approved) {
+      handleError("Invalid request", 400);
+    }
+    if (!img.likes.some((data) => data.user == user._id)) {
+      handleError("Invalid request", 400);
+    } else {
+      img.likes = img.likes.filter((data) => data.user != user._id);
+      img.likeCount--;
+      await img.save();
+      return res
+        .status(200)
+        .json({ result: true, message: "Removed from liked images" });
+    }
+  } catch (error) {
+    res
+      .status(error.status || 500)
+      .json({ result: false, messgae: error.message });
+  }
+};

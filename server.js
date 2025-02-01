@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 3001;
 const basic = require("./Routes/basic");
 const auth = require("./Routes/authentication");
 const image = require("./Routes/image");
+const admin = require("./Routes/admin");
 const cookieParser = require("cookie-parser");
 // === === === initialization === === === //
 
@@ -31,6 +32,8 @@ app.use("/", basic);
 app.use("/auth", auth);
 
 app.use("/image", image);
+
+app.use("/admin", admin);
 
 // === server final listen === === //
 
