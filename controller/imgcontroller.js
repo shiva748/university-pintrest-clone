@@ -198,3 +198,29 @@ exports.unlike_image = async (req, res) => {
       .json({ result: false, messgae: error.message });
   }
 };
+
+// === === === delete image === === === //
+
+exports.delete_image = async (req, res) => {
+  try {
+    let user = req.user;
+    let { image_id } = req.body;
+    const uploadDir = path.join(__dirname, "../public/");
+    if (!image_id) {
+      handleError("Invalid request", 400);
+    }
+    let img = await image.findById(image_id);
+    if (!img || img.user != user._id) {
+      handleError("Invalid request", 400);
+    }
+    fs.unlinkSync(path.join(uploadDir, image.imageUrl));
+    await Image.deleteOne({ _id: image_id });
+    res
+      .status(200)
+      .json({ result: true, message: "Image deleted successfully" });
+  } catch (error) {
+    res
+      .status(error.status || 500)
+      .json({ result: false, message: error.message });
+  }
+};

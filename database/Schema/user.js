@@ -58,6 +58,10 @@ const UserSchema = new Schema(
       type: Date,
       default: Date.now,
     },
+    active: {
+      type: Boolean,
+      default: true,
+    },
     jwtTokens: [
       {
         token: {

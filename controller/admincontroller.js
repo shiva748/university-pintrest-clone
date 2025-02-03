@@ -2,6 +2,9 @@ const { handleError } = require("../snippets/error");
 const Admin = require("../database/Schema/admin");
 let Image = require("../database/Schema/image");
 const { login } = require("../snippets/validation");
+const path = require("path");
+const fs = require("fs");
+const user = require("../database/Schema/user");
 
 // === === === admin login === === === //
 
@@ -93,6 +96,66 @@ exports.de_list = async (req, res) => {
     return res
       .status(200)
       .json({ result: true, message: "Image de-listed successfully" });
+  } catch (error) {
+    res
+      .status(error.status || 500)
+      .json({ result: false, message: error.message });
+  }
+};
+
+// === === === image waiting === === === //
+
+exports.image_waiting = async (req, res) => {
+  try {
+    let images = await Image.find({ approved: false });
+    return res.status(200).json({ result: false, data: images });
+  } catch (error) {
+    res
+      .status(error.status || 500)
+      .json({ result: false, message: error.message });
+  }
+};
+
+// === === === delete image === === === //
+
+exports.delete_image = async (req, res) => {
+  try {
+    let { image_id } = req.body;
+    const uploadDir = path.join(__dirname, "../public/");
+    if (!image_id) {
+      handleError("Invalid request", 400);
+    }
+    let image = await Image.findById(image_id);
+    if (!image) {
+      handleError("Invalid request", 400);
+    }
+    fs.unlinkSync(path.join(uploadDir, image.imageUrl));
+    await Image.deleteOne({ _id: image_id });
+    res
+      .status(200)
+      .json({ result: true, message: "Image deleted successfully" });
+  } catch (error) {
+    res
+      .status(error.status || 500)
+      .json({ result: false, message: error.message });
+  }
+};
+
+// === === === get user profile === === === //
+
+exports.get_user_profile = async (req, res) => {
+  try {
+    let { username } = req.body;
+    if (!username) {
+      handleError("Invalid request", 400);
+    }
+    let users = await user.find(
+      {
+        username: { $in: new RegExp(username, "i") },
+      },
+      { jwtTokens: 0, password: 0 }
+    );
+    return res.status(200).json({ result: false, data: users });
   } catch (error) {
     res
       .status(error.status || 500)
