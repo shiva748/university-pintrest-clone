@@ -29,11 +29,11 @@ app.use("/image", express.static("./public"));
 
 app.use("/", basic);
 
-app.use("/auth", auth);
+app.use("/api/auth", auth);
 
-app.use("/image", image);
+app.use("/api/image", image);
 
-app.use("/admin", admin);
+app.use("/api/admin", admin);
 
 // === server final listen === === //
 
